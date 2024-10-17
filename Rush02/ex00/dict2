@@ -1,0 +1,186 @@
+
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+//remove
+#include <stdio.h>
+#include <string.h> 
+
+//#include "dict.h"
+
+#define MAX_ENTRIES 50;
+
+int validate_args(const char *str) {
+    while (*str) {
+        if (*str == '.' || *str == ',') return 0;
+        if (*str < '0' || *str > '9') {
+            if (*str == '-' || *str == '+') return 0;
+            return 0;
+        }
+        str++;
+    }
+    return 1;
+}
+
+void print_error(const char *msg) {
+    write(STDERR_FILENO, msg, strlen(msg));
+    write(STDERR_FILENO, "\n", 1);
+}
+
+void search_and_print_value(const char *num_str, char **keys, char **values, int num_entries) {
+    for (int i = 0; i < num_entries; i++) {
+        if (strcmp(keys[i], num_str) == 0) {
+            printf("Value: %s\n", values[i]);
+            return;
+        }
+    }
+}
+
+void free_resources(char **keys, char **values, char *buffer, int fd) {
+    if (buffer) free(buffer);
+    if (keys) {
+        for (int i = 0; i < MAX_ENTRIES && keys[i]; i++) free(keys[i]);
+        free(keys);
+    }
+    if (values) {
+        for (int i = 0; i < MAX_ENTRIES && values[i]; i++) free(values[i]);
+        free(values);
+    }
+    if (fd != -1) close(fd);
+}
+
+
+// Function to open the dictionary file
+int open_dict(void) {
+    const char *file_path = "./numbers.dict"; 
+
+    // Open the file
+    int fd = open(file_path, O_RDONLY);
+    if (fd == -1) {
+        // Handle the error: print to standard error
+        const char *error_message = "Error opening file\n";
+        write(STDERR_FILENO, error_message, 18);
+        return -1;  // Return -1 to indicate failure
+    }
+
+    return fd;
+}
+
+// Function to initialize arrays and number of entries
+int initialize_dict(int **keys, char ***values, int *num_entries) {
+    const int MAX_ENTRIES = 50;  // Define a maximum number of key-value pairs
+
+    // Allocate memory for keys array
+    *keys = (int *)malloc(MAX_ENTRIES * sizeof(int));
+    if (*keys == NULL) {
+        const char *error_message = "Memory allocation for keys failed\n";
+        write(STDERR_FILENO, error_message, 36);
+        return -1;  // Return -1 to indicate failure
+    }
+
+    // Allocate memory for values array
+    *values = (char **)malloc(MAX_ENTRIES * sizeof(char *));
+    if (*values == NULL) {
+        const char *error_message = "Memory allocation for values failed\n";
+        write(STDERR_FILENO, error_message, 36);
+        free(*keys);  // Free previously allocated memory
+        return -1;  // Return -1 to indicate failure
+    }
+
+    // Initialize the number of entries
+    *num_entries = 0;
+
+    return 0;  // Return 0 to indicate success
+}
+
+// Function to read the file into a buffer
+int read_dict(int fd, char **buffer) {
+    const ssize_t buffer_size = 1024;  // Define buffer size
+
+    *buffer = (char *)malloc(buffer_size);
+    if (*buffer == NULL) {
+        const char *error_message = "Buffer allocation failed\n";
+        write(STDERR_FILENO, error_message, 24);
+        close(fd);
+        return -1;  // Return -1 to indicate failure
+    }
+
+    ssize_t bytes_read = read(fd, *buffer, buffer_size);
+    if (bytes_read == -1) {
+        const char *error_message = "Error reading file\n";
+        write(STDERR_FILENO, error_message, 18);
+        free(*buffer);  // Free buffer before returning
+        close(fd);
+        return -1;  // Return -1 to indicate failure
+    }
+
+    return bytes_read;  // Return number of bytes read
+}
+
+#define MAX_ENTRIES 50  // Maximum number of entries
+#define BUFFER_SIZE 1024 // Size of buffer
+
+int parse_buffer(char *buffer, int *keys, char **values, int *num_entries)
+
+{
+    int index = 0;
+    char *line_start = buffer;
+    char *line_end;
+    
+    while ((line_end = strchr(line_start, '\n')) != NULL) {
+        // Find the colon separating key and value
+        char *colon = strchr(line_start, ':');
+        if (colon && colon < line_end) {
+            // Extract key
+            *colon = '\0';  // Temporarily terminate the key string
+            char key_str[16];  // Buffer to hold key string
+            snprintf(key_str, sizeof(key_str), "%s", line_start);
+            int key = atoi(key_str);  // Convert key to integer
+            keys[index] = key;
+
+            // Extract value
+            *colon = ':';  // Restore the colon
+            char *value_start = colon + 1;
+            *line_end = '\0';  // Temporarily terminate the value string
+            values[index] = (char *)malloc((line_end - value_start + 1) * sizeof(char));
+            if (values[index] == NULL) {
+                const char *error_message = "Memory allocation for value failed\n";
+                write(STDERR_FILENO, error_message, 36);
+                return -1;  // Return -1 to indicate failure
+            }
+            snprintf(values[index], line_end - value_start + 1, "%s", value_start);
+
+            // Restore newline
+            *line_end = '\n';
+            index++;
+            if (index >= MAX_ENTRIES) {
+                break;  // Exit if we exceed the maximum number of entries
+            }
+        }
+        line_start = line_end + 1;  // Move to the next line
+    }
+
+    *num_entries = index;
+    return 0;  // Return 0 to indicate success
+}
+//Parse the File:
+//split the buffer into lines???
+//For each line, split the line into key and value parts using strchr to find the delimiter (:).???
+//Convert the key part to an integer using atoi.
+//Store the key in the keys array and the value in the values array.
+//Increment the entry count.???
+
+
+//Close the File: close function
+
+//Search for a Key:
+//Iterate over the keys array to find the index corresponding to the desired key.
+//Use the index to retrieve the corresponding value from the values array.
+
+
+//Print/Write the Result:
+//Print the value associated with the key.
+
+
+//Free Memory

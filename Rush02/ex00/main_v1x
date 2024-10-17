@@ -1,0 +1,130 @@
+
+{
+	int	i;
+	int	j;
+	char msg_error1[] = "ERROR, you can only write 2 arguments.";
+	char msg_error2[] = "ERROR, you can only write integer numbers.";	
+	char msg_error3[] = "ERROR, you can only write numbers.";	
+	char msg_error4[] = "ERROR, you can't put signs like - or +.";
+
+	i = 0;
+	if (argc > 2)
+	{
+		(void) **argv;
+		while (msg_error1[i] != '\0')
+		{
+			write(2, &msg_error1[i], 1);
+			i++;
+		}
+		write(1, "\n", 1);
+		return (0);
+	}
+	i = 0;
+	while (argv[1][i] != '\0')
+	{
+		j = 0;
+		if (argv[1][i] == '.' || argv[1][i] == ',')
+		{
+			while(msg_error2[j] != '\0')
+			{
+				write(2, &msg_error2[j], 1);
+				j++;
+			}
+			write(1, "\n", 1);
+			return (0);
+		}
+		i++;
+	}
+	i = 0;
+	j = 0;
+    while (argv[1][i] != '\0')
+    {
+        // Verificar si el carácter no es un dígito
+        if (argv[1][i] < '0' || argv[1][i] > '9')
+        {
+			if (argv[1][i] == '-' || argv[1][i] == '+')
+			{
+				while (msg_error4[j] != '\0')
+				{
+					write(2, &msg_error4[j], 1);
+					j++;
+				}
+			}
+			else
+			{
+
+            // Imprimir el mensaje de error
+            	while (msg_error3[j] != '\0')
+            	{
+                write(2, &msg_error3[j], 1);
+                j++;
+            	}
+			}
+            write(2, "\n", 1); // Escribir el salto de línea también en el stderr
+            return (0);
+        }
+        i++;
+    }
+    
+
+    int fd = open_dict();
+    if (fd == -1) {
+        return 1;  // Exit with failure code
+    }
+
+    int *keys;
+    char **values;
+    int num_entries;
+
+    // Initialize arrays and number of entries
+    if (initialize_dict(&keys, &values, &num_entries) != 0) {
+        close(fd);  // Ensure file descriptor is closed before returning
+        return 1;  // Exit with failure code
+    }
+
+    char *buffer;
+    ssize_t bytes_read = read_dict(fd, &buffer);
+    if (bytes_read == -1) {
+        free(keys);  // Free allocated memory
+        free(values); // Free allocated memory
+        close(fd);  // Ensure file descriptor is closed before returning
+        return 1;  // Exit with failure code
+    }
+
+    // For demonstration, write the buffer to standard output
+    //write(STDOUT_FILENO, buffer, bytes_read);
+
+    // Parse the buffer
+    if (parse_buffer(buffer, keys, values, &num_entries) != 0) {
+        free(buffer);
+        free(keys);
+        free(values);
+        close(fd);
+        return 1;
+    }
+    
+   
+    
+    //int index = 2;
+	//printf("Key: %d, Value: %s\n", keys[index], values[index]);
+	
+	 int num = atoi(argv[1]);
+	
+	int index = 0;
+    while (index < num_entries)
+    {
+    	if (keys[index] == num)
+    	{
+        	printf("Value: %s\n", values[index]);
+        }
+        free(values[index]);  // Free each value string after use
+        index++;
+    }
+    // Free allocated memory and close the file
+    free(buffer);
+    free(keys);
+    free(values);
+    close(fd);
+
+    return 0;  // Exit with success code
+}	
